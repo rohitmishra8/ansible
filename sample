@@ -1,0 +1,54 @@
+---
+- name: Sample
+  hosts: all
+  become: true
+  become_user: root
+  vars:
+    rel_version: "{{ version }}"
+    rel_branch: "{{ branch }}"
+    username: "{{ user }}"
+    api_token: "{{ token }}"
+
+  tasks:
+  - name: Checking for bundle download directory
+    stat:
+      path: "/root/{{ version }}_bundles"
+    register: pvm_dir
+
+  - name: Check if directory already exists
+    debug:
+      msg: "Bundle download directory already exists"
+    when: pvm_dir.stat.exists
+
+  - name: Create directory if it doesn't exist
+    file:
+     path: "/root/{{ version }}_bundles"
+     state: directory
+    when: pvm_dir.stat.exists == false
+    
+  - name: Verifying downloaded files
+    shell:
+      chdir: "/root/{{ version }}_bundles"
+      cmd: ls -lrth
+    register: verify_bundle
+
+  - name: Showing downloaded files and bundle size
+    debug:
+      var: verify_bundle.stdout_lines
+
+  - name: Start service dhcpd, if not running
+    service:
+      name: dhcpd
+      state: started
+      
+  - name: Install pip if not present
+    yum:
+      name: python-pip
+      state: latest
+    ignore_errors: yes
+
+  - name: Install pexpect if not present
+    pip:
+      name: pexpect
+      state: latest
+    ignore_errors: yes
